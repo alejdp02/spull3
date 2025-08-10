@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Phoenix Pull — Mobile</title>
+
+  <!-- Tailwind Play CDN (no build step) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#6ee7b7',
+            ink: '#e6e8ee',
+            muted: '#a5adba',
+            panel: '#12121a',
+            line: '#2a2a3a',
+            bg: '#0b0b10',
+          },
+          boxShadow: {
+            card: '0 10px 30px rgba(0,0,0,.35)',
+            sheet: '0 -10px 30px rgba(0,0,0,.4)',
+          },
+          borderRadius: { xl2: '1.25rem' }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { color-scheme: dark; }
+    body { background: radial-gradient(900px 500px at 20% -10%, #1a1a24, transparent), radial-gradient(800px 500px at 90% 10%, #161621, transparent), #0b0b10; }
+    .safe { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+    .tap { height: 52px; min-width: 52px; }
+    .glass { background: rgba(18,18,26,.9); -webkit-backdrop-filter: saturate(180%) blur(8px); backdrop-filter: saturate(180%) blur(8px); }
+  </style>
+
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Your config: copy config.example.js -> config.js and fill in URL + anon key -->
+  <script src="config.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body class="text-ink font-[Inter]">
+  <!-- ============== LOGIN VIEW ============== -->
+  <section id="view-login" class="min-h-screen grid place-items-center p-6">
+    <div class="w-full max-w-md bg-panel border border-line rounded-2xl shadow-card p-5">
+      <h1 class="text-xl font-extrabold text-brand">Sign in</h1>
+      <p id="loginHint" class="text-muted text-sm mt-1"></p>
+
+      <form id="loginForm" class="grid gap-3 mt-4">
+        <label class="grid gap-1">
+          <span class="text-sm text-muted">Email</span>
+          <input id="loginEmail" class="bg-[#0f0f16] border border-line rounded-xl px-3 py-3" type="email" autocomplete="username" required />
+        </label>
+        <label class="grid gap-1">
+          <span class="text-sm text-muted">Password</span>
+          <input id="loginPass" class="bg-[#0f0f16] border border-line rounded-xl px-3 py-3" type="password" autocomplete="current-password" required />
+        </label>
+        <button class="tap rounded-xl bg-brand text-[#0a1f18] font-extrabold" type="submit">Sign in</button>
+      </form>
+
+      <div class="flex items-center justify-between mt-3">
+        <button id="toSignup" class="text-sm text-brand underline">Create an account</button>
+        <button id="resetPw" class="text-sm text-muted underline">Reset password</button>
+      </div>
+    </div>
+
+    <!-- SIGNUP SHEET -->
+    <dialog id="signupDialog" class="w-full max-w-md bg-panel border border-line rounded-2xl shadow-card p-5">
+      <form id="signupForm" method="dialog" class="grid gap-3">
+        <h2 class="text-lg font-bold">Create account</h2>
+        <label class="grid gap-1">
+          <span class="text-sm text-muted">Email</span>
+          <input id="signupEmail" class="bg-[#0f0f16] border border-line rounded-xl px-3 py-3" type="email" required />
+        </label>
+        <label class="grid gap-1">
+          <span class="text-sm text-muted">Password</span>
+          <input id="signupPass" class="bg-[#0f0f16] border border-line rounded-xl px-3 py-3" type="password" required />
+        </label>
+        <label class="grid gap-1">
+          <span class="text-sm text-muted">Display name</span>
+          <input id="signupName" class="bg-[#0f0f16] border border-line rounded-xl px-3 py-3" type="text" placeholder="e.g., Ale" />
+        </label>
+        <div class="flex gap-2 justify-end mt-2">
+          <button value="cancel" class="tap border border-line rounded-xl px-4">Cancel</button>
+          <button class="tap rounded-xl bg-brand text-[#0a1f18] font-extrabold" type="submit">Sign up</button>
+        </div>
+      </form>
+    </dialog>
+  </section>
+
+  <!-- ============== ADMIN VIEW ============== -->
+  <section id="view-admin" class="hidden">
+    <header class="safe glass sticky top-0 z-50 border-b border-line py-2">
+      <div class="flex items-center gap-2">
+        <h1 class="text-lg font-extrabold text-brand">Admin</h1>
+        <div class="ml-auto flex items-center gap-2">
+          <button id="gotoApp" class="tap rounded-xl border-2 border-brand text-brand px-4">Go to App</button>
+          <button id="logoutA" class="tap rounded-xl bg-[#1a1a24] px-4">Log out</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="safe py-4 space-y-4">
+      <div class="grid md:grid-cols-2 gap-4">
+        <!-- Users panel -->
+        <section class="bg-panel border border-line rounded-2xl p-4 shadow-card">
+          <h2 class="font-bold mb-2">Users</h2>
+          <form id="inviteForm" class="flex flex-wrap gap-2 mb-3">
+            <input id="inviteEmail" class="bg-[#0f0f16] border border-line rounded-xl px-3 py-3 flex-1 min-w-[180px]" placeholder="email@domain.com" type="email" required />
+            <select id="inviteRole" class="bg-[#0f0f16] border border-line rounded-xl px-3 py-3">
+              <option value="user">user</option>
+              <option value="admin">admin</option>
+            </select>
+            <button class="tap rounded-xl bg-brand text-[#0a1f18] font-extrabold px-4" type="submit">Invite</button>
+          </form>
+          <div id="usersTable" class="overflow-auto"></div>
+        </section>
+
+        <!-- Interactions panel -->
+        <section class="bg-panel border border-line rounded-2xl p-4 shadow-card">
+          <div class="flex items-center gap-2 mb-2">
+            <h2 class="font-bold">Interactions</h2>
+            <div class="ml-auto flex items-center gap-2">
+              <select id="logUserFilter" class="bg-[#0f0f16] border border-line rounded-xl px-3 py-2"></select>
+              <select id="logActionFilter" class="bg-[#0f0f16] border border-line rounded-xl px-3 py-2">
+                <option value="all">All actions</option>
+                <option value="qty_change">Qty changed</option>
+                <option value="restock_toggle">Restock toggled</option>
+                <option value="send_summary">Send summary</option>
+                <option value="login">Login</option>
+                <option value="logout">Logout</option>
+              </select>
+              <button id="exportCSV" class="tap rounded-xl border-2 border-brand text-brand px-4">Export CSV</button>
+              <button id="clearLogs" class="tap rounded-xl border-2 border-red-500 text-red-400 px-4">Clear Logs</button>
+            </div>
+          </div>
+          <div id="logsTable" class="overflow-auto"></div>
+        </section>
+      </div>
+    </main>
+  </section>
+
+  <!-- ============== APP VIEW ============== -->
+  <section id="view-app" class="hidden">
+    <header class="safe glass sticky top-0 z-50 border-b border-line py-2">
+      <div class="flex items-center gap-2">
+        <h1 class="text-lg font-extrabold text-brand">Pull List</h1>
+        <div id="who" class="text-sm text-muted"></div>
+        <div class="ml-auto flex items-center gap-2">
+          <button id="adminBtn" class="tap rounded-xl border-2 border-brand text-brand px-4">Admin</button>
+          <button id="logout" class="tap rounded-xl bg-[#1a1a24] px-4">Log out</button>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 my-2">
+        <input id="search" class="flex-1 min-w-[140px] bg-[#0f0f16] border border-line rounded-xl px-3 py-3" type="search" placeholder="Search items…" autocomplete="off" />
+        <label class="flex items-center gap-2 border border-line rounded-xl px-3 py-2 bg-[#0f0f16]">
+          <input id="onlyQty" type="checkbox" class="accent-brand" /> <span class="text-sm">Only qty</span>
+        </label>
+      </div>
+      <div id="chips" class="flex gap-2 overflow-x-auto py-2"></div>
+    </header>
+
+    <main class="safe pb-[calc(90px+env(safe-area-inset-bottom))] pt-2">
+      <div id="list" class="grid md:grid-cols-2 gap-4"></div>
+    </main>
+
+    <div class="safe fixed left-0 right-0 bottom-0 z-50 glass border-t border-line">
+      <div class="flex items-center gap-2 py-2">
+        <button id="send" class="tap rounded-xl bg-brand text-[#0a1f18] font-extrabold px-5">Send</button>
+        <button id="copy" class="tap rounded-xl border-2 border-brand text-brand px-5">Copy</button>
+        <button id="clear" class="tap rounded-xl bg-[#1a1a24] px-5">Clear</button>
+        <div class="ml-auto font-extrabold" id="total">0</div>
+      </div>
+    </div>
+
+    <!-- Bottom Sheet Modal -->
+    <div class="fixed inset-0 hidden items-end justify-center bg-black/50" id="modal" role="dialog" aria-modal="true" aria-labelledby="sumTitle">
+      <div class="w-full max-w-2xl rounded-t-2xl bg-[#0f0f16] text-ink shadow-sheet">
+        <header class="safe border-b border-line py-3"><h3 id="sumTitle" class="text-lg font-bold">Summary</h3></header>
+        <div class="max-h-[60vh] overflow-auto p-4" id="summary"></div>
+        <footer class="safe border-t border-line py-3 flex items-center gap-2 justify-end">
+          <button id="copyPull" class="tap rounded-xl border-2 border-brand text-brand px-4">Copy Pull</button>
+          <button id="copyRestock" class="tap rounded-xl border-2 border-brand text-brand px-4">Copy Restock</button>
+          <button id="print" class="tap rounded-xl border-2 border-brand text-brand px-4">Print</button>
+          <button id="close" class="tap rounded-xl bg-brand text-[#0a1f18] font-extrabold px-4">Close</button>
+        </footer>
+      </div>
+    </div>
+  </section>
+</body>
+</html>
